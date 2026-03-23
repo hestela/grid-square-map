@@ -74,10 +74,13 @@ function shiftGeoJSON(data, offset) {
     const resetBtn    = document.getElementById('reset-view');
 
     // --- Distance ---
-    let distLine = null;
+    let distLine    = null;
+    let distLayers  = [];   // [{rect, marker}, {rect, marker}]
 
     function clearDistance() {
         if (distLine) { distLine.remove(); distLine = null; }
+        distLayers.forEach(({ rect, marker }) => { rect.remove(); marker.remove(); });
+        distLayers = [];
         document.getElementById('dist-from').value = '';
         document.getElementById('dist-to').value   = '';
         document.getElementById('dist-error').textContent  = '';
@@ -105,24 +108,14 @@ function shiftGeoJSON(data, offset) {
         toggleBtn.title     = collapsed ? 'Expand' : 'Collapse';
     });
 
-    // Show highlight + marker for a locator string, optionally panning to it.
-    function showLocator(raw, pan) {
+    // Build and add a highlight rect + circle marker for a locator. Returns { rect, marker }.
+    function buildLocatorLayer(raw, color, openPopup) {
         const bounds = Maidenhead.toBounds(raw);
         const center = Maidenhead.toCenter(raw);
 
-        if (pan) {
-            map.fitBounds(
-                [[bounds.swLat, bounds.swLon], [bounds.neLat, bounds.neLon]],
-                { maxZoom: raw.length === 4 ? 8 : 4, animate: true, padding: [40, 40] }
-            );
-        }
-
-        if (searchMarker) { searchMarker.remove(); searchMarker = null; }
-        if (searchRect)   { searchRect.remove();   searchRect   = null; }
-
-        searchRect = L.rectangle(
+        const rect = L.rectangle(
             [[bounds.swLat, bounds.swLon], [bounds.neLat, bounds.neLon]],
-            { color: '#e63030', weight: 2, fillColor: '#e63030', fillOpacity: 0.15 }
+            { color, weight: 2, fillColor: color, fillOpacity: 0.15 }
         ).addTo(map);
 
         const coordStr = `${Math.abs(center.lat).toFixed(2)}°${center.lat >= 0 ? 'N' : 'S'}, `
@@ -131,16 +124,29 @@ function shiftGeoJSON(data, offset) {
         const locationStr = [state, country].filter(Boolean).join(', ');
         const popupHtml = `<strong>${raw}</strong><br>${coordStr}`
                         + (locationStr ? `<br>${locationStr}` : '');
-        searchMarker = L.circleMarker([center.lat, center.lon], {
-            radius: 8,
-            color: '#e63030',
-            weight: 2,
-            fillColor: '#e63030',
-            fillOpacity: 0.9
-        })
-        .bindPopup(popupHtml)
-        .addTo(map)
-        .openPopup();
+
+        const marker = L.circleMarker([center.lat, center.lon], {
+            radius: 8, color, weight: 2, fillColor: color, fillOpacity: 0.9
+        }).bindPopup(popupHtml).addTo(map);
+
+        if (openPopup) marker.openPopup();
+        return { rect, marker };
+    }
+
+    // Show highlight + marker for a locator string, optionally panning to it.
+    function showLocator(raw, pan) {
+        if (pan) {
+            const b = Maidenhead.toBounds(raw);
+            map.fitBounds(
+                [[b.swLat, b.swLon], [b.neLat, b.neLon]],
+                { maxZoom: raw.length === 4 ? 8 : 4, animate: true, padding: [40, 40] }
+            );
+        }
+
+        if (searchMarker) { searchMarker.remove(); searchMarker = null; }
+        if (searchRect)   { searchRect.remove();   searchRect   = null; }
+
+        ({ rect: searchRect, marker: searchMarker } = buildLocatorLayer(raw, '#e63030', true));
         activeLocator = raw;
     }
 
@@ -200,19 +206,24 @@ function shiftGeoJSON(data, offset) {
         const rawB = distTo.value.trim().toUpperCase();
         distError.textContent  = '';
         distResult.textContent = '';
+        // Clear previous distance layers
         if (distLine) { distLine.remove(); distLine = null; }
+        distLayers.forEach(({ rect, marker }) => { rect.remove(); marker.remove(); });
+        distLayers = [];
 
         const errA = Maidenhead.validate(rawA);
         const errB = Maidenhead.validate(rawB);
         if (errA || errB) {
-            distError.textContent = errA
-                ? `"From" — ${errA}`
-                : `"To" — ${errB}`;
+            distError.textContent = errA ? `"From" — ${errA}` : `"To" — ${errB}`;
             return;
         }
 
         const { km, mi } = Maidenhead.distance(rawA, rawB);
         distResult.textContent = `${km.toLocaleString()} km / ${mi.toLocaleString()} mi`;
+
+        // Markers and highlights for both squares
+        distLayers.push(buildLocatorLayer(rawA, '#e69030', false));
+        distLayers.push(buildLocatorLayer(rawB, '#e69030', false));
 
         const cA = Maidenhead.toCenter(rawA);
         const cB = Maidenhead.toCenter(rawB);
