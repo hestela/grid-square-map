@@ -1,0 +1,102 @@
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: system-ui, sans-serif;
+}
+
+/* Ocean background */
+#map {
+    height: 100%;
+    width: 100%;
+    background: #a8c8e0;
+}
+
+/* Floating search panel */
+#ui {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.92);
+    padding: 12px 14px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    min-width: 220px;
+    max-width: 280px;
+}
+
+#ui h1 {
+    margin: 0 0 4px 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #222;
+    letter-spacing: 0.02em;
+}
+
+#ui p.subtitle {
+    margin: 0 0 10px 0;
+    font-size: 11px;
+    color: #666;
+}
+
+#search-row {
+    display: flex;
+    gap: 6px;
+}
+
+#search {
+    flex: 1;
+    padding: 6px 8px;
+    font-size: 16px;
+    font-family: monospace, sans-serif;
+    font-weight: bold;
+    letter-spacing: 0.08em;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    text-transform: uppercase;
+    color: #1a1a1a;
+    background: #fafafa;
+    width: 0; /* flex handles sizing */
+}
+
+#search:focus {
+    outline: none;
+    border-color: #1e50a0;
+    background: #fff;
+}
+
+#go {
+    padding: 6px 12px;
+    font-size: 14px;
+    font-weight: 600;
+    background: #1e50a0;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+#go:hover { background: #163c7a; }
+#go:active { background: #0f2c5a; }
+
+#search-error {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #c0392b;
+    min-height: 14px;
+}
+
+#loading {
+    margin-top: 8px;
+    font-size: 11px;
+    color: #888;
+}
+
+/* Leaflet attribution tweak */
+.leaflet-control-attribution {
+    font-size: 10px;
+}
