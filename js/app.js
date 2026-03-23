@@ -120,7 +120,7 @@ function shiftGeoJSON(data, offset) {
 
         const coordStr = `${Math.abs(center.lat).toFixed(2)}°${center.lat >= 0 ? 'N' : 'S'}, `
                        + `${Math.abs(center.lon).toFixed(2)}°${center.lon >= 0 ? 'E' : 'W'}`;
-        const { country, state } = GeoLookup.lookup(center.lat, center.lon);
+        const { country, state } = GeoLookup.lookupBounds(bounds.swLat, bounds.swLon, bounds.neLat, bounds.neLon);
         const locationStr = [state, country].filter(Boolean).join(', ');
         const popupHtml = `<strong>${raw}</strong><br>${coordStr}`
                         + (locationStr ? `<br>${locationStr}` : '');
