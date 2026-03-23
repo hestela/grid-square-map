@@ -12,12 +12,14 @@ An offline, self-hostable Maidenhead grid square map. Look up any grid square (e
 - Works in any modern browser
 
 ## Screenshots
+- Main UI
+![main](images/main.png)
 
-> Search for a grid square and see its location:
-> `CN92` → *Oregon, United States of America*
->
-> Calculate distance:
-> `CN92` → `IO91` → *8,072 km / 5,015 mi*
+- Search for a grid square and see its location:
+![search](images/search.png)
+
+- Calculate distance:
+![main](images/distance.png)
 
 ---
 
