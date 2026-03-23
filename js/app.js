@@ -19,6 +19,7 @@
             return r.json();
         })
         .then(data => {
+            GeoLookup.setCountries(data.features);
             L.geoJSON(data, {
                 style: {
                     color: '#666',
@@ -34,6 +35,12 @@
             console.error(err);
             if (loadingEl) loadingEl.textContent = 'Error loading map data. Run setup.sh first.';
         });
+
+    // --- States/provinces GeoJSON for lookup (optional) ---
+    fetch('data/states.geojson')
+        .then(r => r.json())
+        .then(data => GeoLookup.setStates(data.features))
+        .catch(() => {}); // silently skip if not downloaded yet
 
     // --- Maidenhead grid overlay ---
     new MaidenheadGridLayer().addTo(map);
@@ -81,6 +88,10 @@
         // Place a circle marker at the center
         const coordStr = `${Math.abs(center.lat).toFixed(2)}°${center.lat >= 0 ? 'N' : 'S'}, `
                        + `${Math.abs(center.lon).toFixed(2)}°${center.lon >= 0 ? 'E' : 'W'}`;
+        const { country, state } = GeoLookup.lookup(center.lat, center.lon);
+        const locationStr = [state, country].filter(Boolean).join(', ');
+        const popupHtml = `<strong>${raw}</strong><br>${coordStr}`
+                        + (locationStr ? `<br>${locationStr}` : '');
         searchMarker = L.circleMarker([center.lat, center.lon], {
             radius: 8,
             color: '#e63030',
@@ -88,7 +99,7 @@
             fillColor: '#e63030',
             fillOpacity: 0.9
         })
-        .bindPopup(`<strong>${raw}</strong><br>${coordStr}`)
+        .bindPopup(popupHtml)
         .addTo(map)
         .openPopup();
     }
