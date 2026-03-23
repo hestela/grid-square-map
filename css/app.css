@@ -28,6 +28,29 @@ html, body {
     max-width: 280px;
 }
 
+#ui-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+#toggle {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    color: #666;
+    padding: 2px 4px;
+    line-height: 1;
+    margin-top: 2px;
+}
+
+#toggle:hover { color: #222; }
+
+#ui-body.hidden { display: none; }
+
 #ui h1 {
     margin: 0 0 4px 0;
     font-size: 14px;
@@ -116,6 +139,86 @@ html, body {
 
 #action-row button:hover  { background: #e0e0e0; }
 #action-row button:active { background: #d0d0d0; }
+
+/* Distance section */
+#dist-divider {
+    border: none;
+    border-top: 1px solid #ddd;
+    margin: 8px 0;
+}
+
+#dist-row {
+    display: flex;
+    gap: 6px;
+    align-items: flex-end;
+}
+
+.dist-field {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1;
+    min-width: 0;
+}
+
+.dist-field label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.dist-field input {
+    padding: 6px 8px;
+    font-size: 14px;
+    font-family: monospace, sans-serif;
+    font-weight: bold;
+    letter-spacing: 0.08em;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    text-transform: uppercase;
+    color: #1a1a1a;
+    background: #fafafa;
+    width: 100%;
+}
+
+.dist-field input:focus {
+    outline: none;
+    border-color: #1e50a0;
+    background: #fff;
+}
+
+#dist-go {
+    padding: 6px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    background: #1e50a0;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    align-self: flex-end;
+}
+
+#dist-go:hover  { background: #163c7a; }
+#dist-go:active { background: #0f2c5a; }
+
+#dist-error {
+    font-size: 11px;
+    color: #c0392b;
+}
+
+#dist-error:not(:empty) { margin-top: 5px; }
+
+#dist-result {
+    font-size: 13px;
+    font-weight: 600;
+    color: #222;
+}
+
+#dist-result:not(:empty) { margin-top: 4px; }
 
 /* Leaflet attribution tweak */
 .leaflet-control-attribution {

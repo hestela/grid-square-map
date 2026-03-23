@@ -114,5 +114,35 @@ const Maidenhead = (() => {
         );
     }
 
-    return { validate, toBounds, toCenter, allFields, squaresInField, fieldsInBounds };
+    // Returns the 4-char square locator for a geographic coordinate.
+    function fromLatLon(lat, lon) {
+        const normLon = ((lon + 180) % 360 + 360) % 360; // 0–360
+        const normLat = lat + 90;                         // 0–180
+        const f1 = Math.min(Math.floor(normLon / 20), 17);
+        const f2 = Math.min(Math.floor(normLat / 10), 17);
+        const d1 = Math.min(Math.floor((normLon % 20) / 2), 9);
+        const d2 = Math.min(Math.floor(normLat % 10), 9);
+        return FIELD_LETTERS[f1] + FIELD_LETTERS[f2] + d1 + d2;
+    }
+
+    // Great-circle distance between two lat/lon points using Haversine formula.
+    function haversineKm(lat1, lon1, lat2, lon2) {
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2
+                + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180)
+                * Math.sin(dLon / 2) ** 2;
+        return R * 2 * Math.asin(Math.sqrt(a));
+    }
+
+    // Distance in km and miles between the centers of two locator strings.
+    function distance(locA, locB) {
+        const a = toCenter(locA);
+        const b = toCenter(locB);
+        const km = haversineKm(a.lat, a.lon, b.lat, b.lon);
+        return { km: Math.round(km), mi: Math.round(km * 0.621371) };
+    }
+
+    return { validate, toBounds, toCenter, fromLatLon, distance, allFields, squaresInField, fieldsInBounds };
 })();

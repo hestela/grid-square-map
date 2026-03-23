@@ -12,8 +12,14 @@
 <div id="map"></div>
 
 <div id="ui">
-    <h1>Grid Square Map</h1>
-    <p class="subtitle">Ham radio Maidenhead locator</p>
+    <div id="ui-header">
+        <div>
+            <h1>Grid Square Map</h1>
+            <p class="subtitle">Ham radio Maidenhead locator</p>
+        </div>
+        <button id="toggle" title="Collapse">&#x25B2;</button>
+    </div>
+    <div id="ui-body">
     <div id="search-row">
         <input id="search" type="text" placeholder="CN92" maxlength="4"
                autocomplete="off" autocorrect="off" spellcheck="false">
@@ -21,10 +27,32 @@
     </div>
     <div id="search-error"></div>
     <div id="loading">Loading map data...</div>
+
+    <div id="dist-section">
+        <div id="dist-row">
+            <div class="dist-field">
+                <label for="dist-from">From</label>
+                <input id="dist-from" type="text" placeholder="CN92" maxlength="4"
+                       autocomplete="off" autocorrect="off" spellcheck="false">
+            </div>
+            <div class="dist-field">
+                <label for="dist-to">To</label>
+                <input id="dist-to" type="text" placeholder="FN31" maxlength="4"
+                       autocomplete="off" autocorrect="off" spellcheck="false">
+            </div>
+            <button id="dist-go">Calc</button>
+        </div>
+        <div id="dist-error"></div>
+        <div id="dist-result"></div>
+    </div>
+
+    <hr id="dist-divider">
+
     <div id="action-row">
         <button id="clear">Clear</button>
         <button id="reset-view">Reset View</button>
     </div>
+    </div><!-- end #ui-body -->
 </div>
 
 <script src="js/leaflet.js"></script>

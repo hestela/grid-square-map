@@ -8,8 +8,9 @@
         minZoom: 2,
         maxZoom: 10,
         worldCopyJump: true,
-        zoomControl: true
+        zoomControl: false
     });
+    L.control.zoom({ position: 'topright' }).addTo(map);
 
     // --- Country GeoJSON base layer ---
     const loadingEl = document.getElementById('loading');
@@ -46,8 +47,9 @@
     new MaidenheadGridLayer().addTo(map);
 
     // --- Search ---
-    let searchMarker = null;
-    let searchRect   = null;
+    let searchMarker  = null;
+    let searchRect    = null;
+    let activeLocator = null;
 
     const searchInput = document.getElementById('search');
     const searchError = document.getElementById('search-error');
@@ -55,49 +57,58 @@
     const clearBtn    = document.getElementById('clear');
     const resetBtn    = document.getElementById('reset-view');
 
+    // --- Distance ---
+    let distLine = null;
+
+    function clearDistance() {
+        if (distLine) { distLine.remove(); distLine = null; }
+        document.getElementById('dist-from').value = '';
+        document.getElementById('dist-to').value   = '';
+        document.getElementById('dist-error').textContent  = '';
+        document.getElementById('dist-result').textContent = '';
+    }
+
     function clearSelection() {
         if (searchMarker) { searchMarker.remove(); searchMarker = null; }
         if (searchRect)   { searchRect.remove();   searchRect   = null; }
         searchInput.value = '';
         searchError.textContent = '';
+        activeLocator = null;
+        clearDistance();
     }
 
     clearBtn.addEventListener('click', clearSelection);
     resetBtn.addEventListener('click', () => map.setView([20, 0], 2));
 
-    function doSearch() {
-        const raw = searchInput.value.trim().toUpperCase();
-        searchError.textContent = '';
+    // --- Collapsible panel ---
+    const toggleBtn = document.getElementById('toggle');
+    const uiBody    = document.getElementById('ui-body');
+    toggleBtn.addEventListener('click', () => {
+        const collapsed = uiBody.classList.toggle('hidden');
+        toggleBtn.innerHTML = collapsed ? '&#x25BC;' : '&#x25B2;';
+        toggleBtn.title     = collapsed ? 'Expand' : 'Collapse';
+    });
 
-        if (!raw) return;
+    // Show highlight + marker for a locator string, optionally panning to it.
+    function showLocator(raw, pan) {
+        const bounds = Maidenhead.toBounds(raw);
+        const center = Maidenhead.toCenter(raw);
 
-        const err = Maidenhead.validate(raw);
-        if (err) {
-            searchError.textContent = 'Invalid grid square: ' + err;
-            return;
+        if (pan) {
+            map.fitBounds(
+                [[bounds.swLat, bounds.swLon], [bounds.neLat, bounds.neLon]],
+                { maxZoom: raw.length === 4 ? 8 : 4, animate: true, padding: [40, 40] }
+            );
         }
 
-        const bounds  = Maidenhead.toBounds(raw);
-        const center  = Maidenhead.toCenter(raw);
-        const is4char = raw.length === 4;
-
-        // Pan and zoom to the grid square
-        map.fitBounds(
-            [[bounds.swLat, bounds.swLon], [bounds.neLat, bounds.neLon]],
-            { maxZoom: is4char ? 8 : 4, animate: true, padding: [40, 40] }
-        );
-
-        // Remove previous marker/rect
         if (searchMarker) { searchMarker.remove(); searchMarker = null; }
         if (searchRect)   { searchRect.remove();   searchRect   = null; }
 
-        // Highlight the square with a semi-transparent rectangle
         searchRect = L.rectangle(
             [[bounds.swLat, bounds.swLon], [bounds.neLat, bounds.neLon]],
             { color: '#e63030', weight: 2, fillColor: '#e63030', fillOpacity: 0.15 }
         ).addTo(map);
 
-        // Place a circle marker at the center
         const coordStr = `${Math.abs(center.lat).toFixed(2)}°${center.lat >= 0 ? 'N' : 'S'}, `
                        + `${Math.abs(center.lon).toFixed(2)}°${center.lon >= 0 ? 'E' : 'W'}`;
         const { country, state } = GeoLookup.lookup(center.lat, center.lon);
@@ -114,7 +125,30 @@
         .bindPopup(popupHtml)
         .addTo(map)
         .openPopup();
+        activeLocator = raw;
     }
+
+    function doSearch() {
+        const raw = searchInput.value.trim().toUpperCase();
+        searchError.textContent = '';
+        if (!raw) return;
+        const err = Maidenhead.validate(raw);
+        if (err) { searchError.textContent = 'Invalid grid square: ' + err; return; }
+        showLocator(raw, true);
+    }
+
+    // Click on map to select the grid square under the cursor (only when sub-squares visible)
+    map.on('click', e => {
+        if (map.getZoom() < 5) return;
+        const locator = Maidenhead.fromLatLon(e.latlng.lat, e.latlng.lng);
+        if (locator === activeLocator) {
+            clearSelection();
+        } else {
+            searchInput.value = locator;
+            searchError.textContent = '';
+            showLocator(locator, false);
+        }
+    });
 
     goBtn.addEventListener('click', doSearch);
     searchInput.addEventListener('keydown', e => {
@@ -127,4 +161,53 @@
         searchInput.value = searchInput.value.toUpperCase();
         searchInput.setSelectionRange(pos, pos);
     });
+
+    // --- Distance calculation ---
+    const distFrom   = document.getElementById('dist-from');
+    const distTo     = document.getElementById('dist-to');
+    const distGoBtn  = document.getElementById('dist-go');
+    const distError  = document.getElementById('dist-error');
+    const distResult = document.getElementById('dist-result');
+
+    function autoUpper(input) {
+        input.addEventListener('input', () => {
+            const pos = input.selectionStart;
+            input.value = input.value.toUpperCase();
+            input.setSelectionRange(pos, pos);
+        });
+    }
+    autoUpper(distFrom);
+    autoUpper(distTo);
+
+    function doDistance() {
+        const rawA = distFrom.value.trim().toUpperCase();
+        const rawB = distTo.value.trim().toUpperCase();
+        distError.textContent  = '';
+        distResult.textContent = '';
+        if (distLine) { distLine.remove(); distLine = null; }
+
+        const errA = Maidenhead.validate(rawA);
+        const errB = Maidenhead.validate(rawB);
+        if (errA || errB) {
+            distError.textContent = errA
+                ? `"From" — ${errA}`
+                : `"To" — ${errB}`;
+            return;
+        }
+
+        const { km, mi } = Maidenhead.distance(rawA, rawB);
+        distResult.textContent = `${km.toLocaleString()} km / ${mi.toLocaleString()} mi`;
+
+        const cA = Maidenhead.toCenter(rawA);
+        const cB = Maidenhead.toCenter(rawB);
+        distLine = L.polyline(
+            [[cA.lat, cA.lon], [cB.lat, cB.lon]],
+            { color: '#e69030', weight: 2, dashArray: '6 4' }
+        ).addTo(map);
+
+        map.fitBounds(distLine.getBounds(), { padding: [40, 40], animate: true });
+    }
+
+    distGoBtn.addEventListener('click', doDistance);
+    distTo.addEventListener('keydown', e => { if (e.key === 'Enter') doDistance(); });
 })();
