@@ -75,8 +75,8 @@ const MaidenheadGridLayer = L.Layer.extend({
         const svg = this._svg;
         const g   = this._svgGroup(svg);
 
-        const lineColor = faint ? 'rgba(30,80,160,0.25)' : 'rgba(30,80,160,0.55)';
-        const lineWidth = faint ? '0.8' : '1.2';
+        const lineColor = faint ? 'rgba(40,40,55,0.3)' : 'rgba(40,40,55,0.6)';
+        const lineWidth = faint ? '0.8' : '1.5';
 
         // Vertical field lines every 20°
         const vStart = Math.floor(west / 20) * 20;
@@ -106,9 +106,11 @@ const MaidenheadGridLayer = L.Layer.extend({
                 const label = Maidenhead.fromLatLon(centerLat, centerLon).substring(0, 2);
                 const cp = this._px(centerLat, centerLon);
                 this._text(g, cp.x, cp.y, label, {
-                    fontSize: faint ? '14px' : '18px',
+                    fontSize: faint ? '13px' : '18px',
                     fontWeight: 'bold',
-                    fill: faint ? 'rgba(30,80,160,0.35)' : 'rgba(30,80,160,0.45)',
+                    fill: 'rgba(30,30,50,0.75)',
+                    stroke: 'rgba(255,255,255,0.8)',
+                    strokeWidth: faint ? '2' : '3',
                     letterSpacing: '2px'
                 });
             }
@@ -131,14 +133,14 @@ const MaidenheadGridLayer = L.Layer.extend({
                     if (lon <= west - 2 || lon >= east + 2) continue;
                     const p0 = this._px(Math.max(fLat,        south - 1), lon);
                     const p1 = this._px(Math.min(fLat + 10, north + 1), lon);
-                    this._line(g, p0, p1, 'rgba(30,80,160,0.25)', '0.5');
+                    this._line(g, p0, p1, 'rgba(40,40,55,0.3)', '0.6');
                 }
                 // Interior horizontal lines every 1° within this field
                 for (let lat = fLat + 1; lat < fLat + 10; lat += 1) {
                     if (lat <= south - 1 || lat >= north + 1) continue;
                     const p0 = this._px(lat, Math.max(fLon,        west - 2));
                     const p1 = this._px(lat, Math.min(fLon + 20, east + 2));
-                    this._line(g, p0, p1, 'rgba(30,80,160,0.25)', '0.5');
+                    this._line(g, p0, p1, 'rgba(40,40,55,0.3)', '0.6');
                 }
 
                 // Square labels — only if cells are tall/wide enough
@@ -155,8 +157,10 @@ const MaidenheadGridLayer = L.Layer.extend({
                             const cp = this._px(cLat, cLon);
                             this._text(g, cp.x, cp.y, label, {
                                 fontSize: '11px',
-                                fontWeight: 'normal',
-                                fill: 'rgba(30,80,160,0.6)'
+                                fontWeight: '600',
+                                fill: 'rgba(30,30,50,0.85)',
+                                stroke: 'rgba(255,255,255,0.85)',
+                                strokeWidth: '2'
                             });
                         }
                     }
@@ -193,7 +197,12 @@ const MaidenheadGridLayer = L.Layer.extend({
         el.setAttribute('font-family', 'monospace, sans-serif');
         el.setAttribute('font-size', opts.fontSize || '14px');
         el.setAttribute('font-weight', opts.fontWeight || 'normal');
-        el.setAttribute('fill', opts.fill || 'rgba(30,80,160,0.5)');
+        el.setAttribute('fill', opts.fill || 'rgba(30,30,50,0.75)');
+        if (opts.stroke) {
+            el.setAttribute('stroke', opts.stroke);
+            el.setAttribute('stroke-width', opts.strokeWidth || '2');
+            el.setAttribute('paint-order', 'stroke fill');
+        }
         if (opts.letterSpacing) el.setAttribute('letter-spacing', opts.letterSpacing);
         el.textContent = content;
         parent.appendChild(el);
