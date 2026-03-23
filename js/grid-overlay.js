@@ -5,13 +5,20 @@ const MaidenheadGridLayer = L.Layer.extend({
     onAdd(map) {
         this._map = map;
 
-        // Attach SVG directly to the map container (not a Leaflet pane).
-        // Leaflet animates panning by CSS-transforming pane divs, which would
-        // misalign the grid between redraws. The map container itself is never
-        // transformed, so latLngToContainerPoint() coords are always correct here.
+        // Place the SVG inside a dedicated Leaflet pane so it sits in the normal
+        // Leaflet z-order (above GeoJSON tiles, below markers and popups).
+        // Leaflet transforms the map pane during panning, so we counter-translate
+        // the SVG by the inverse of that transform on every draw, which keeps our
+        // container-relative coordinates correctly aligned at all times.
+        if (!map.getPane('gridPane')) {
+            const pane = map.createPane('gridPane');
+            pane.style.zIndex = 350; // above tilePane(200), below overlayPane(400)/popupPane(700)
+            pane.style.pointerEvents = 'none';
+        }
+
         this._svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        this._svg.style.cssText = 'position:absolute;top:0;left:0;z-index:420;pointer-events:none;overflow:visible;';
-        map.getContainer().appendChild(this._svg);
+        this._svg.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;overflow:visible;';
+        map.getPane('gridPane').appendChild(this._svg);
 
         map.on('move zoom', this._scheduleRedraw, this);
         map.on('moveend zoomend', this._redraw, this);
@@ -48,6 +55,12 @@ const MaidenheadGridLayer = L.Layer.extend({
         const size = map.getSize();
         svg.setAttribute('width',  size.x);
         svg.setAttribute('height', size.y);
+
+        // The gridPane lives inside .leaflet-map-pane which Leaflet shifts via
+        // CSS transform during panning. Counter-translate the SVG by the inverse
+        // so our container-relative pixel coordinates remain correct.
+        const pos = map._getMapPanePos();
+        svg.style.transform = `translate(${-pos.x}px,${-pos.y}px)`;
 
         // Clear previous drawing
         while (svg.firstChild) svg.removeChild(svg.firstChild);
