@@ -10,6 +10,7 @@ curl -fsSL "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"  -o "$BASE/js/leafl
 curl -fsSL "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" -o "$BASE/css/leaflet.css"
 
 echo "Downloading Leaflet marker images..."
+mkdir -p "$BASE/css/images" "$BASE/data"
 curl -fsSL "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png"    -o "$BASE/css/images/marker-icon.png"
 curl -fsSL "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png" -o "$BASE/css/images/marker-icon-2x.png"
 curl -fsSL "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png"  -o "$BASE/css/images/marker-shadow.png"
