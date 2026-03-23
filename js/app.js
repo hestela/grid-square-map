@@ -1,5 +1,20 @@
 // App bootstrap: map init, GeoJSON base layer, search, marker
 
+// Returns a copy of a GeoJSON FeatureCollection with all longitudes shifted by `offset`.
+// Used to render world copies at ±360° so the map wraps past the antimeridian.
+function shiftGeoJSON(data, offset) {
+    function shiftRing(ring) { return ring.map(([lon, lat, ...rest]) => [lon + offset, lat, ...rest]); }
+    function shiftGeom(geom) {
+        if (!geom) return geom;
+        if (geom.type === 'Polygon')
+            return { type: 'Polygon', coordinates: geom.coordinates.map(shiftRing) };
+        if (geom.type === 'MultiPolygon')
+            return { type: 'MultiPolygon', coordinates: geom.coordinates.map(p => p.map(shiftRing)) };
+        return geom;
+    }
+    return { ...data, features: data.features.map(f => ({ ...f, geometry: shiftGeom(f.geometry) })) };
+}
+
 (function () {
     // --- Map init ---
     const map = L.map('map', {
@@ -21,15 +36,16 @@
         })
         .then(data => {
             GeoLookup.setCountries(data.features);
-            L.geoJSON(data, {
-                style: {
-                    color: '#666',
-                    weight: 0.6,
-                    fillColor: '#d6cfba',
-                    fillOpacity: 1
-                },
-                pane: 'tilePane'  // keep countries below grid overlay
-            }).addTo(map);
+
+            const style = { color: '#666', weight: 0.6, fillColor: '#d6cfba', fillOpacity: 1 };
+
+            // Render three world copies so the map wraps correctly when panned
+            // past the antimeridian. Coordinates are shifted by ±360° longitude.
+            [-360, 0, 360].forEach(offset => {
+                const layer = offset === 0 ? data : shiftGeoJSON(data, offset);
+                L.geoJSON(layer, { style, pane: 'tilePane' }).addTo(map);
+            });
+
             if (loadingEl) loadingEl.style.display = 'none';
         })
         .catch(err => {

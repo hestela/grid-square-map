@@ -53,98 +53,113 @@ const MaidenheadGridLayer = L.Layer.extend({
         while (svg.firstChild) svg.removeChild(svg.firstChild);
 
         const bounds = map.getBounds();
-        const west   = Math.max(bounds.getWest(),  -180);
-        const east   = Math.min(bounds.getEast(),   180);
-        const south  = Math.max(bounds.getSouth(),  -90);
-        const north  = Math.min(bounds.getNorth(),   90);
+        // Use raw (unwrapped) bounds — Leaflet reports longitudes beyond ±180
+        // when panned across the antimeridian, and latLngToContainerPoint handles them.
+        const west  = bounds.getWest();
+        const east  = bounds.getEast();
+        const south = Math.max(bounds.getSouth(), -90);
+        const north = Math.min(bounds.getNorth(),  90);
 
         if (zoom < 5) {
             this._drawFieldGrid(west, east, south, north);
         } else {
             this._drawFieldGrid(west, east, south, north, true);
-            this._drawSquareGrid(bounds);
+            this._drawSquareGrid(west, east, south, north);
         }
     },
 
-    // Draw the 20°×10° field grid lines and (optionally light) field labels
+    // Draw the 20°×10° field grid lines and labels.
+    // Longitude loops start from the first aligned value west of `west` so the
+    // grid covers any world copy the user has panned to.
     _drawFieldGrid(west, east, south, north, faint) {
         const svg = this._svg;
         const g   = this._svgGroup(svg);
 
-        const lineColor  = faint ? 'rgba(30,80,160,0.25)' : 'rgba(30,80,160,0.55)';
-        const lineWidth  = faint ? '0.8' : '1.2';
+        const lineColor = faint ? 'rgba(30,80,160,0.25)' : 'rgba(30,80,160,0.55)';
+        const lineWidth = faint ? '0.8' : '1.2';
 
-        // Vertical field lines (longitude boundaries every 20°)
-        for (let lon = -180; lon <= 180; lon += 20) {
-            if (lon < west - 20 || lon > east + 20) continue;
+        // Vertical field lines every 20°
+        const vStart = Math.floor(west / 20) * 20;
+        for (let lon = vStart; lon <= east + 20; lon += 20) {
             const p0 = this._px(Math.max(south - 5, -90), lon);
             const p1 = this._px(Math.min(north + 5,  90), lon);
             this._line(g, p0, p1, lineColor, lineWidth);
         }
 
-        // Horizontal field lines (latitude boundaries every 10°)
+        // Horizontal field lines every 10°
         for (let lat = -90; lat <= 90; lat += 10) {
             if (lat < south - 10 || lat > north + 10) continue;
-            const p0 = this._px(lat, Math.max(west - 20, -180));
-            const p1 = this._px(lat, Math.min(east + 20,  180));
+            const p0 = this._px(lat, west - 20);
+            const p1 = this._px(lat, east + 20);
             this._line(g, p0, p1, lineColor, lineWidth);
         }
 
-        // Field labels — always shown
-        const visibleFields = Maidenhead.fieldsInBounds(this._map.getBounds());
-        for (const f of visibleFields) {
-            const cp = this._px(f.centerLat, f.centerLon);
-            this._text(g, cp.x, cp.y, f.label, {
-                fontSize: faint ? '14px' : '18px',
-                fontWeight: 'bold',
-                fill: faint ? 'rgba(30,80,160,0.35)' : 'rgba(30,80,160,0.45)',
-                letterSpacing: '2px'
-            });
+        // Field labels — iterate over the visible longitude range in 20° steps
+        const lStart = Math.floor(west / 20) * 20;
+        for (let lon = lStart; lon < east; lon += 20) {
+            const centerLon = lon + 10;
+            for (let lati = 0; lati < 18; lati++) {
+                const swLat = -90 + lati * 10;
+                if (swLat + 10 < south || swLat > north) continue;
+                const centerLat = swLat + 5;
+                // fromLatLon normalises longitude internally, giving the right label
+                const label = Maidenhead.fromLatLon(centerLat, centerLon).substring(0, 2);
+                const cp = this._px(centerLat, centerLon);
+                this._text(g, cp.x, cp.y, label, {
+                    fontSize: faint ? '14px' : '18px',
+                    fontWeight: 'bold',
+                    fill: faint ? 'rgba(30,80,160,0.35)' : 'rgba(30,80,160,0.45)',
+                    letterSpacing: '2px'
+                });
+            }
         }
     },
 
-    // Draw 2°×1° square sub-grid for visible fields + digit labels
-    _drawSquareGrid(bounds) {
-        const svg    = this._svg;
-        const g      = this._svgGroup(svg);
-        const fields = Maidenhead.fieldsInBounds(bounds);
+    // Draw 2°×1° square sub-grid and labels, covering the full visible lon range.
+    _drawSquareGrid(west, east, south, north) {
+        const svg = this._svg;
+        const g   = this._svgGroup(svg);
 
-        for (const f of fields) {
-            const squares = Maidenhead.squaresInField(f.label);
+        // Iterate over visible fields by longitude/latitude
+        const fLonStart = Math.floor(west / 20) * 20;
+        const fLatStart = Math.floor(Math.max(south, -90) / 10) * 10;
 
-            // Draw square lines within this field
-            // Vertical lines every 2° inside the field
-            for (let lon = f.swLon + 2; lon < f.neLon; lon += 2) {
-                if (lon <= bounds.getWest() - 2 || lon >= bounds.getEast() + 2) continue;
-                const p0 = this._px(Math.max(f.swLat, bounds.getSouth() - 1), lon);
-                const p1 = this._px(Math.min(f.neLat, bounds.getNorth() + 1), lon);
-                this._line(g, p0, p1, 'rgba(30,80,160,0.25)', '0.5');
-            }
-            // Horizontal lines every 1° inside the field
-            for (let lat = f.swLat + 1; lat < f.neLat; lat += 1) {
-                if (lat <= bounds.getSouth() - 1 || lat >= bounds.getNorth() + 1) continue;
-                const p0 = this._px(lat, Math.max(f.swLon, bounds.getWest() - 2));
-                const p1 = this._px(lat, Math.min(f.neLon, bounds.getEast() + 2));
-                this._line(g, p0, p1, 'rgba(30,80,160,0.25)', '0.5');
-            }
+        for (let fLon = fLonStart; fLon < east; fLon += 20) {
+            for (let fLat = fLatStart; fLat < Math.min(north, 90); fLat += 10) {
+                // Interior vertical lines every 2° within this field
+                for (let lon = fLon + 2; lon < fLon + 20; lon += 2) {
+                    if (lon <= west - 2 || lon >= east + 2) continue;
+                    const p0 = this._px(Math.max(fLat,        south - 1), lon);
+                    const p1 = this._px(Math.min(fLat + 10, north + 1), lon);
+                    this._line(g, p0, p1, 'rgba(30,80,160,0.25)', '0.5');
+                }
+                // Interior horizontal lines every 1° within this field
+                for (let lat = fLat + 1; lat < fLat + 10; lat += 1) {
+                    if (lat <= south - 1 || lat >= north + 1) continue;
+                    const p0 = this._px(lat, Math.max(fLon,        west - 2));
+                    const p1 = this._px(lat, Math.min(fLon + 20, east + 2));
+                    this._line(g, p0, p1, 'rgba(30,80,160,0.25)', '0.5');
+                }
 
-            // Square labels — only if cells are large enough to be readable
-            // Measure pixel height of one square cell
-            const topPx    = this._px(f.swLat + 1, f.swLon).y;
-            const bottomPx = this._px(f.swLat,     f.swLon).y;
-            const cellH    = Math.abs(bottomPx - topPx);
-            const cellW    = Math.abs(this._px(f.swLat, f.swLon + 2).x - this._px(f.swLat, f.swLon).x);
+                // Square labels — only if cells are tall/wide enough
+                const cellH = Math.abs(this._px(fLat + 1, fLon).y - this._px(fLat, fLon).y);
+                const cellW = Math.abs(this._px(fLat, fLon + 2).x - this._px(fLat, fLon).x);
 
-            if (cellH >= 16 && cellW >= 20) {
-                for (const sq of squares) {
-                    if (sq.centerLon < bounds.getWest()  || sq.centerLon > bounds.getEast()  ||
-                        sq.centerLat < bounds.getSouth() || sq.centerLat > bounds.getNorth()) continue;
-                    const cp = this._px(sq.centerLat, sq.centerLon);
-                    this._text(g, cp.x, cp.y, sq.label, {
-                        fontSize: '11px',
-                        fontWeight: 'normal',
-                        fill: 'rgba(30,80,160,0.6)'
-                    });
+                if (cellH >= 16 && cellW >= 20) {
+                    for (let di = 0; di < 10; di++) {
+                        for (let dj = 0; dj < 10; dj++) {
+                            const cLon = fLon + di * 2 + 1;
+                            const cLat = fLat + dj * 1 + 0.5;
+                            if (cLon < west || cLon > east || cLat < south || cLat > north) continue;
+                            const label = Maidenhead.fromLatLon(cLat, cLon);
+                            const cp = this._px(cLat, cLon);
+                            this._text(g, cp.x, cp.y, label, {
+                                fontSize: '11px',
+                                fontWeight: 'normal',
+                                fill: 'rgba(30,80,160,0.6)'
+                            });
+                        }
+                    }
                 }
             }
         }
