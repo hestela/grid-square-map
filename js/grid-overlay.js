@@ -5,16 +5,13 @@ const MaidenheadGridLayer = L.Layer.extend({
     onAdd(map) {
         this._map = map;
 
-        // Create a dedicated pane so grid sits above GeoJSON but below markers
-        if (!map.getPane('gridPane')) {
-            map.createPane('gridPane');
-            map.getPane('gridPane').style.zIndex = 420;
-        }
-
-        // Create SVG element inside the grid pane
+        // Attach SVG directly to the map container (not a Leaflet pane).
+        // Leaflet animates panning by CSS-transforming pane divs, which would
+        // misalign the grid between redraws. The map container itself is never
+        // transformed, so latLngToContainerPoint() coords are always correct here.
         this._svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        this._svg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;';
-        map.getPane('gridPane').appendChild(this._svg);
+        this._svg.style.cssText = 'position:absolute;top:0;left:0;z-index:420;pointer-events:none;overflow:visible;';
+        map.getContainer().appendChild(this._svg);
 
         map.on('moveend zoomend', this._redraw, this);
         this._redraw();
@@ -23,6 +20,7 @@ const MaidenheadGridLayer = L.Layer.extend({
     onRemove(map) {
         this._svg.remove();
         map.off('moveend zoomend', this._redraw, this);
+        delete this._svg;
     },
 
     _px(lat, lon) {
@@ -81,18 +79,16 @@ const MaidenheadGridLayer = L.Layer.extend({
             this._line(g, p0, p1, lineColor, lineWidth);
         }
 
-        // Field labels — only when not faint (i.e. zoom < 5)
-        if (!faint) {
-            const visibleFields = Maidenhead.fieldsInBounds(this._map.getBounds());
-            for (const f of visibleFields) {
-                const cp = this._px(f.centerLat, f.centerLon);
-                this._text(g, cp.x, cp.y, f.label, {
-                    fontSize: '18px',
-                    fontWeight: 'bold',
-                    fill: 'rgba(30,80,160,0.45)',
-                    letterSpacing: '2px'
-                });
-            }
+        // Field labels — always shown
+        const visibleFields = Maidenhead.fieldsInBounds(this._map.getBounds());
+        for (const f of visibleFields) {
+            const cp = this._px(f.centerLat, f.centerLon);
+            this._text(g, cp.x, cp.y, f.label, {
+                fontSize: faint ? '14px' : '18px',
+                fontWeight: 'bold',
+                fill: faint ? 'rgba(30,80,160,0.35)' : 'rgba(30,80,160,0.45)',
+                letterSpacing: '2px'
+            });
         }
     },
 
@@ -133,7 +129,7 @@ const MaidenheadGridLayer = L.Layer.extend({
                     if (sq.centerLon < bounds.getWest()  || sq.centerLon > bounds.getEast()  ||
                         sq.centerLat < bounds.getSouth() || sq.centerLat > bounds.getNorth()) continue;
                     const cp = this._px(sq.centerLat, sq.centerLon);
-                    this._text(g, cp.x, cp.y, sq.digits, {
+                    this._text(g, cp.x, cp.y, sq.label, {
                         fontSize: '11px',
                         fontWeight: 'normal',
                         fill: 'rgba(30,80,160,0.6)'
