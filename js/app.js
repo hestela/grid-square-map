@@ -52,6 +52,18 @@
     const searchInput = document.getElementById('search');
     const searchError = document.getElementById('search-error');
     const goBtn       = document.getElementById('go');
+    const clearBtn    = document.getElementById('clear');
+    const resetBtn    = document.getElementById('reset-view');
+
+    function clearSelection() {
+        if (searchMarker) { searchMarker.remove(); searchMarker = null; }
+        if (searchRect)   { searchRect.remove();   searchRect   = null; }
+        searchInput.value = '';
+        searchError.textContent = '';
+    }
+
+    clearBtn.addEventListener('click', clearSelection);
+    resetBtn.addEventListener('click', () => map.setView([20, 0], 2));
 
     function doSearch() {
         const raw = searchInput.value.trim().toUpperCase();

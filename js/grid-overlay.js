@@ -13,14 +13,25 @@ const MaidenheadGridLayer = L.Layer.extend({
         this._svg.style.cssText = 'position:absolute;top:0;left:0;z-index:420;pointer-events:none;overflow:visible;';
         map.getContainer().appendChild(this._svg);
 
+        map.on('move zoom', this._scheduleRedraw, this);
         map.on('moveend zoomend', this._redraw, this);
         this._redraw();
     },
 
     onRemove(map) {
         this._svg.remove();
+        map.off('move zoom', this._scheduleRedraw, this);
         map.off('moveend zoomend', this._redraw, this);
+        if (this._rafId) cancelAnimationFrame(this._rafId);
         delete this._svg;
+    },
+
+    _scheduleRedraw() {
+        if (this._rafId) return;
+        this._rafId = requestAnimationFrame(() => {
+            this._rafId = null;
+            this._redraw();
+        });
     },
 
     _px(lat, lon) {
