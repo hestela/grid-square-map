@@ -90,14 +90,6 @@ docker build -t grid-square-map .
 docker run -p 3456:80 grid-square-map
 ```
 
-### Trigger a new image build
-
-The Docker image is built and pushed to the GitHub Container Registry on demand via GitHub Actions.
-
-To trigger a build: go to the [Actions tab](https://github.com/hestela/grid-square-map/actions) → **Build and Push Docker Image** → **Run workflow**.
-
----
-
 ## Maidenhead Grid System
 
 Grid squares use the [Maidenhead Locator System](https://en.wikipedia.org/wiki/Maidenhead_Locator_System) used in amateur radio:
